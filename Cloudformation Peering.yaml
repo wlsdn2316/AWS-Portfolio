@@ -1,0 +1,1379 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a vpc with rds, ec2, route53, and alb
+
+#########################################################################
+
+Parameters: 
+  00VPCSettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  01VpcCIDR:
+    Description: VPCcidr
+    Type: String
+    Default: 50.51.0.0/16
+  
+  02PublicSubnet1CIDR:
+    Description: Public1cidr
+    Type: String
+    Default: 50.51.10.0/24
+  
+  03PublicSubnet2CIDR:
+    Description: Public2cidr
+    Type: String
+    Default: 50.51.11.0/24
+  
+  04PrivateSubnet1CIDR:
+    Description: Private1cidr
+    Type: String
+    Default: 50.51.40.0/24
+  
+  05PrivateSubnet2CIDR:
+    Description: Private2cidr
+    Type: String
+    Default: 50.51.41.0/24
+  
+  06PrivateSubnetDB1CIDR:
+    Description: privateDB1cidr
+    Type: String
+    Default: 50.51.42.0/24  
+
+  07PrivateSubnetDB2CIDR:
+    Description: privateDB2cidr
+    Type: String
+    Default: 50.51.43.0/24  
+
+  08InstanceSettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  09InstanceType:
+    Description: You have to enter WebServer EC2 instance type
+    Type: String
+    Default: t2.micro  
+
+  10InstanceCount:
+    Description: You can Type Web instance's amount 0~6
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue : 6
+
+  11SGSettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  12SGHttp80protocol:
+    Description: ALB SGHttp80protocol
+    Type: String
+    Default: 0.0.0.0/0
+
+  13SGHttps433protocol:
+    Description: ALB SGHttps433protocol
+    Type: String
+    Default: 0.0.0.0/0  
+
+  14SGssh20port:
+    Description: EC2 SGssh20port
+    Type: String
+    Default: 0.0.0.0/0
+  
+  15SGhttp80port:
+    Description: EC2 SGhttp80port
+    Type: String
+    Default: 0.0.0.0/0
+
+  16Webserviceport:
+    Description: Type EC2custom Webservice port
+    Type: String
+    Default: '8080' 
+
+  17WebserviceCIDR:
+    Description: Type EC2custom Webservice CIDR
+    Type: String
+    Default: 0.0.0.0/0 
+
+  18ALBSettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  19ALBSchemeType:
+    Description: ALBSchemeType
+    Type: String
+    Default: internet-facing
+    AllowedValues:
+    - internet-facing
+    - internal
+
+  20ALBListenerPort:
+    Description: ALBListenerPort
+    Type: Number
+    Default: 80
+
+  21ALBTargetGroupPort:
+    Description: ALBTargetGroupPort
+    Type: String
+    Default: '8080'    
+
+  22NameandPemkeySettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  23NamePrefix:
+    Description: You can type resources Prefix name 
+    Type: String
+    Default: JJWpeering
+
+  24PemKeyName:
+    Description: EC2-Keyname
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  25Route53Settings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+    
+  26HostedZoneDecision:
+    Description: If you want to create HostedZone, choose yes
+    Type: String
+    Default: 'no'
+    AllowedValues:    
+    - 'yes'
+    - 'no'    
+
+  27RecordDecision:
+    Description: If you want to create Record, choose yes
+    Type: String
+    Default: 'yes'
+    AllowedValues:    
+    - 'yes'
+    - 'no'
+
+  28HostedZone:
+    Description: Type HostedZone
+    Type: String
+    Default: 77106262.wjcloud.co.kr
+
+  29FirstRecordname:
+    Description: FirstRecordname
+    Type: String
+    Default: 'wlsdn1'
+
+  30RecordGeoLocationDecision:
+    Description: If you want to use GeoLocation option, choose yes
+    Type: String
+    Default: 'yes'
+    AllowedValues:    
+    - 'yes'
+    - 'no'
+
+  31GeoLocationCountryCodeALLDecision:  #CountryCode 값이 *인 리소스 레코드 세트를 생성
+    Description: Create a set of resource records with a CountryCode value of *
+    Type: String
+    Default: 'no'
+    AllowedValues:    
+    - 'yes'
+    - 'no'
+
+  32GeoLocationSetIdentifier:
+    Description: Please Enter a unique description about GeoLocationRecord
+    Type: String
+    Default: 'GeoServer DNS Singapore'
+
+  33GeoLocationSetIdentifier2:
+    Description: Please Enter a unique description about GeoLocationRecord
+    Type: String
+    Default: 'GeoServer DNS Singapore2'
+
+  34GeoLocationQuery:
+    Description: Please select the Region where the query starts
+    Type: String
+    Default: 'KR'
+    AllowedValues:    
+    - 'JP'  #도쿄
+    - 'KR'  #한국  
+    - 'SG'  #싱가폴
+    - 'AU'  #시드니 오스트레일리아
+    - 'CA'  #캐나다
+    - 'DE'  #Frankfurt 독일
+    - 'SE'  #Stockholm 스웨덴
+    - 'IE'  #Ireland 아일랜드
+    - 'GB'  #London 영국
+    - 'FR'  #Paris 프랑스        
+    - 'US'  #미국
+
+  35AutoScalingSettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  36AutoScalingDecision:
+    Description: If you want to use AutoScaling, choose yes
+    Type: String
+    Default: 'yes'
+    AllowedValues:    
+    - 'yes'
+    - 'no'  
+
+  37AutoScalingMaxSize:
+    Description: Enter AutoScalingMaxSize
+    Type: String
+    Default: '12'
+
+  38AutoScalingMinSize:
+    Description: Enter AutoScalingMinSize
+    Type: String
+    Default: '1'
+
+  39AutoScalingDesiredCapacity:
+    Description: Enter AutoScalingDesiredCapacity 
+    Type: String
+    Default: '1'
+
+  40AutoScalingProtectedFromScaleIn:  
+    Description: Select True or false
+    Type: String
+    Default: 'false'
+    AllowedValues:    
+    - 'true'
+    - 'false'    
+
+  41AutoScalingAverageNetworkIn:  # ASGAverageNetworkIn 대상 추적 정책 CPUutilization
+    Description: Enter reference value
+    Type: String
+    Default: '1000000'   # 1mb
+
+  42AutoScalingCooldown: # 조정 활동 완료 후 다른 조정 활동 시작 시간
+    Description: Enter AutoScalingCooldown
+    Type: String
+    Default: '60'
+
+  43AutoScalingHealthCheckGracePeriod: #시작 된 EC2 상태를 검사하기 전, 대기하는 시간
+    Description: Enter AutoScalingHealthCheckGracePeriod
+    Type: String
+    Default: '300'  
+
+  44VPCPeeringSettings:
+    Description: Don't enter a value.
+    Type: String
+    Default: ----------------------------------------------------------------
+
+  45VPCPeeringDecision:
+    Description: If you want to use VPCpeering, choose yes
+    Type: String
+    Default: 'yes'
+    AllowedValues:    
+    - 'yes'
+    - 'no'  
+
+  46VPCPeeringAnotherAccount:
+    Description: Choose yes if the VPC you want to peer with another account 
+    Type: String
+    Default: 'yes'
+    AllowedValues: 
+    - 'yes'
+    - 'no'  
+
+  47PeeringVPCID:
+    Description: Enter VPCID you want to peer
+    Type: String
+    Default: 'vpc-'
+
+  48PeeringAccountID:
+    Description: Enter useraccountID you want to peer
+    Type: String
+
+  49PeeringRoleArn:
+    Description: Enter PeerRoleArn you want to peer
+    Type: String  
+
+  50VPCmasterRegion:
+    Description: Select masterRegion
+    Type: String
+    Default: 'ap-northeast-2'
+    AllowedValues:    
+    - 'us-east-2'
+    - 'us-east-1'
+    - 'us-west-1'
+    - 'us-west-2'
+    - 'af-south-1'
+    - 'ap-east-1'
+    - 'ap-south-1'
+    - 'ap-northeast-3'
+    - 'ap-northeast-2'
+    - 'ap-southeast-1'
+    - 'ap-southeast-2'
+    - 'ap-northeast-1'
+    - 'ca-central-1'
+    - 'eu-central-1'
+    - 'eu-west-1'
+    - 'eu-west-2'
+    - 'eu-south-1'
+    - 'eu-north-1'
+    - 'me-south-1'
+    - 'sa-east-1'
+
+  51VPCPeeringCIDR:
+    Description: Enter VPCcdir you want to peer
+    Type: String
+    Default: 50.50.0.0/16
+
+  #52VPCPeeringRouteTable1:
+  #  Description: Enter RouteTable1ID you want to peer
+  #  Type: String
+  #  Default: 'rtb-'  
+
+  #53VPCPeeringRouteTable2:    
+  #  Description: Enter RouteTable2ID you want to peer
+  #  Type: String
+  #  Default: 'rtb-'
+
+#########################################################################
+
+Mappings: 
+  AWSRegionMap:
+    ap-northeast-1: # 도쿄
+      HVM64: ami-09d28faae2e9e7138  # Amazon Linux 2 AMI (HVM), SSD Volume Type
+    ap-northeast-2: # 서울
+      HVM64: ami-006e2f9fa7597680a  # ami-09282971cf2faa4c9 Amazon Linux 2 AMI (HVM), t2.micro 
+    ap-south-1: #뭄바이
+      HVM64: ami-0eeb03e72075b9bcc 
+    ap-southeast-1: #싱가폴
+      HVM64: ami-0d06583a13678c938 
+    ap-southeast-2: #시드니
+      HVM64: ami-075a72b1992cb0687 
+    ca-central-1: # 캐나다(중부)
+      HVM64: ami-0df612970f825f04c
+    eu-central-1: # 프랑크푸르트
+      HVM64: ami-02f9ea74050d6f812 
+    eu-north-1: # 스톡홀롬
+      HVM64: ami-02a6bfdcf8224bd77 
+    eu-west-1: # 아일랜드
+      HVM64: ami-096f43ef67d75e998 
+    eu-west-2: # 런던
+      HVM64: ami-0ffd774e02309201f 
+    eu-west-3: # 파리
+      HVM64: ami-0ec28fc9814fce254
+    sa-east-1: #상파울루
+      HVM64: ami-0a0bc0fa94d632c94 
+    us-east-1: # 버지니아 북부
+      HVM64: ami-0915bcb5fa77e4892
+    us-east-2: # 오하이오
+      HVM64: ami-09246ddb00c7c4fef 
+    us-west-1: # 캘리포니아
+      HVM64: ami-066c82dabe6dd7f73
+    us-west-2: # 오레곤
+      HVM64: ami-09c5e030f74651050 
+
+#########################################################################
+
+Conditions: 
+
+  InstanceLaunch1: !And
+  - !Not [!Equals [0, !Ref 10InstanceCount]]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+
+  InstanceLaunch2: !And    
+  - !Not [!Equals [0, !Ref 10InstanceCount]]
+  - !Not [!Equals [1, !Ref 10InstanceCount]]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+
+  InstanceLaunch3: !And # ~InstanceLaunch6 까지 생성
+  - !Not [!Equals [0, !Ref 10InstanceCount]]
+  - !Not [!Equals [1, !Ref 10InstanceCount]]
+  - !Not [!Equals [2, !Ref 10InstanceCount]]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+
+  InstanceLaunch4: !And
+  - !Not [!Equals [0, !Ref 10InstanceCount]]
+  - !Not [!Equals [1, !Ref 10InstanceCount]]
+  - !Not [!Equals [2, !Ref 10InstanceCount]]
+  - !Not [!Equals [3, !Ref 10InstanceCount]]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]  
+
+  InstanceLaunch5: !And
+  - !Not [!Equals [0, !Ref 10InstanceCount]]
+  - !Not [!Equals [1, !Ref 10InstanceCount]]
+  - !Not [!Equals [2, !Ref 10InstanceCount]]
+  - !Not [!Equals [3, !Ref 10InstanceCount]]
+  - !Not [!Equals [4, !Ref 10InstanceCount]]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]  
+
+  InstanceLaunch6: !And
+  - !Not [!Equals [0, !Ref 10InstanceCount]]
+  - !Not [!Equals [1, !Ref 10InstanceCount]]
+  - !Not [!Equals [2, !Ref 10InstanceCount]]
+  - !Not [!Equals [3, !Ref 10InstanceCount]]
+  - !Not [!Equals [4, !Ref 10InstanceCount]]
+  - !Not [!Equals [5, !Ref 10InstanceCount]]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]  
+
+
+  InstanceTarget1: !And
+  - !Equals [1, !Ref 10InstanceCount]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+  
+  InstanceTarget2: !And 
+  - !Equals [2, !Ref 10InstanceCount]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]] 
+
+  InstanceTarget3: !And
+  - !Equals [3, !Ref 10InstanceCount]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+
+  InstanceTarget4: !And
+  - !Equals [4, !Ref 10InstanceCount]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+
+  InstanceTarget5: !And
+  - !Equals [5, !Ref 10InstanceCount]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]
+
+  InstanceTarget6: !And
+  - !Equals [6, !Ref 10InstanceCount]
+  - !Not [!Equals ["yes", !Ref 36AutoScalingDecision]]   
+
+  HostedZoneDecision: !Equals ["yes", !Ref 26HostedZoneDecision]
+  RecordDecision: !Equals ["yes", !Ref 27RecordDecision]
+
+  GeoLocationRecordYes: !And
+  - !Equals ["yes", !Ref 27RecordDecision]
+  - !Equals ["yes", !Ref 30RecordGeoLocationDecision]
+
+  GeoLocationRecordNo: !And
+  - !Equals ["yes", !Ref 27RecordDecision]
+  - !Equals ["no", !Ref 30RecordGeoLocationDecision]
+
+  GeoLocationCountryCodeALLYes: !And
+  - !Equals ["yes", !Ref 27RecordDecision]
+  - !Equals ["yes", !Ref 30RecordGeoLocationDecision] 
+  - !Equals ["yes", !Ref 31GeoLocationCountryCodeALLDecision] 
+
+
+  AutoScalingDecision: !Equals ["yes", !Ref 36AutoScalingDecision]
+
+  VPCPeeringYESAnotherAccount: !And
+  - !Equals ["yes", !Ref 45VPCPeeringDecision] 
+  - !Equals ["yes", !Ref 46VPCPeeringAnotherAccount]
+
+  VPCPeeringNoAnotherAccount: !And
+  - !Equals ["yes", !Ref 45VPCPeeringDecision]
+  - !Equals ["no", !Ref 46VPCPeeringAnotherAccount]
+
+  VPCPeeringDecision: !Equals ["yes", !Ref 45VPCPeeringDecision]
+#########################################################################
+
+Resources: 
+  T2VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref 01VpcCIDR
+      EnableDnsSupport: 'true' 
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}VPC
+      EnableDnsHostnames: 'true'  
+
+  T2IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}IGW
+            
+
+  T2IGWAttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref T2VPC
+      InternetGatewayId: !Ref T2IGW
+
+#########################################################################
+
+  T2PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref T2VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '']
+      CidrBlock: !Ref 02PublicSubnet1CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}PublicSubnet(1) 
+
+  T2PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: T2VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '']  
+      CidrBlock: !Ref 03PublicSubnet2CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}PublicSubnet(2)
+
+  T2PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '']
+      VpcId: !Ref T2VPC 
+      CidrBlock: !Ref 04PrivateSubnet1CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}PrivateSubnet(1)
+
+  T2PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 2, !GetAZs '']
+      VpcId: !Ref T2VPC 
+      CidrBlock: !Ref 05PrivateSubnet2CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}PrivateSubnet(2)
+
+  T2PrivateSubnetDB1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '']
+      VpcId: !Ref T2VPC 
+      CidrBlock: !Ref 06PrivateSubnetDB1CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}PrivateSubnetDB(1)   
+
+  T2PrivateSubnetDB2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 2, !GetAZs '']
+      VpcId: !Ref T2VPC 
+      CidrBlock: !Ref 07PrivateSubnetDB2CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}PrivateSubnetDB(2) 
+#########################################################################
+
+  T2NGWEIP1:
+    Type: AWS::EC2::EIP
+    DependsOn: T2IGWAttachGateway 
+    Properties:
+      Domain: T2VPC  
+
+  T2NGW1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt T2NGWEIP1.AllocationId 
+      SubnetId: !Ref T2PublicSubnet1  
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}NGW(1)
+  
+  T2NGWEIP2:
+    Type: AWS::EC2::EIP
+    DependsOn: T2IGWAttachGateway  
+    Properties:
+      Domain: T2VPC 
+
+  T2NGW2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt T2NGWEIP2.AllocationId
+      SubnetId: !Ref T2PublicSubnet2  
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}NGW(2)
+
+#########################################################################
+
+  T2PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref T2VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}Public Routes Table
+
+  T2PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: T2IGWAttachGateway
+    Properties:
+      RouteTableId: !Ref T2PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref T2IGW
+
+  T2PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref T2PublicSubnet1
+      RouteTableId: !Ref T2PublicRouteTable
+
+  T2PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref T2PublicSubnet2
+      RouteTableId: !Ref T2PublicRouteTable
+
+#########################################################################
+#가용영역 A
+  T2PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref T2VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}Private Routes Table1
+
+  T2PrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref T2PrivateRouteTable1 
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref T2NGW1
+
+  T2PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref T2PrivateSubnet1
+      RouteTableId: !Ref T2PrivateRouteTable1
+
+  T2PrivateSubnetDB1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref T2PrivateSubnetDB1
+      RouteTableId: !Ref T2PrivateRouteTable1
+#########################################################################
+
+#가용영역 C
+  T2PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref T2VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${23NamePrefix}Private Routes Table2    
+  
+  T2PrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref T2PrivateRouteTable2 
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref T2NGW2
+
+  T2PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref T2PrivateSubnet2
+      RouteTableId: !Ref T2PrivateRouteTable2
+
+  T2PrivateSubnetDB2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref T2PrivateSubnetDB2
+      RouteTableId: !Ref T2PrivateRouteTable2
+
+#########################################################################  
+
+  T2AlbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB access via port 80, 443
+      GroupName: !Sub ${23NamePrefix}ALBSG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: !Ref 12SGHttp80protocol
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: !Ref 13SGHttps433protocol
+      VpcId: !Ref T2VPC
+      
+  T2EC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref T2VPC
+      GroupDescription: Enable access via port 22, 80, custom
+      GroupName: !Sub ${23NamePrefix}EC2SG
+      SecurityGroupIngress:  
+      - IpProtocol: tcp
+        FromPort: '22'   
+        ToPort: '22' 
+        CidrIp: !Ref 14SGssh20port 
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: !Ref 15SGhttp80port
+      - IpProtocol: tcp
+        FromPort: !Ref 16Webserviceport
+        ToPort: !Ref 16Webserviceport  
+        CidrIp: !Ref 17WebserviceCIDR
+
+#########################################################################  
+
+  T2ALB:    
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: !Ref 19ALBSchemeType  #internet-facing, internal 지정
+      Name: !Sub ${23NamePrefix}ALB      
+      SecurityGroups: [!Ref T2AlbSG]     
+      Subnets: 
+        - !Ref T2PublicSubnet1
+        - !Ref T2PublicSubnet2
+
+  T2ALBListener:
+    Condition: InstanceTarget1
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward  #Type: 전달
+          TargetGroupArn: !Ref T2EC2TargetGroup #TargetGroup에 전달   
+      LoadBalancerArn: !Ref T2ALB #로드 밸런서 지정
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP
+
+  T2ALBListener2:
+    Condition: InstanceTarget2
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward   
+          TargetGroupArn: !Ref T2EC2TargetGroup2   
+      LoadBalancerArn: !Ref T2ALB   
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP  
+
+  T2ALBListener3:
+    Condition: InstanceTarget3
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref T2EC2TargetGroup3   
+      LoadBalancerArn: !Ref T2ALB   
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP
+
+  T2ALBListener4:
+    Condition: InstanceTarget4
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref T2EC2TargetGroup4   
+      LoadBalancerArn: !Ref T2ALB   
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP
+
+  T2ALBListener5:
+    Condition: InstanceTarget5
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref T2EC2TargetGroup5   
+      LoadBalancerArn: !Ref T2ALB   
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP
+
+  T2ALBListener6:
+    Condition: InstanceTarget6
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref T2EC2TargetGroup6   
+      LoadBalancerArn: !Ref T2ALB   
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP
+
+  T2AutoScalingALBListener:
+    Condition: AutoScalingDecision
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref T2AutoScalingEC2TargetGroup
+      LoadBalancerArn: !Ref T2ALB   
+      Port: !Ref 20ALBListenerPort
+      Protocol: HTTP
+
+  T2EC2TargetGroup:
+    Condition: InstanceTarget1
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort #포트 지정, Parameter 값 참조
+      Protocol: HTTP 
+      Targets: 
+        - Id: !Ref T2EC2Instance1 #인스턴스 정보 참조            
+          Port: !Ref 21ALBTargetGroupPort
+      VpcId: !Ref T2VPC #VPC 정보 참조
+
+  T2EC2TargetGroup2:
+    Condition: InstanceTarget2
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: T2ALB
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort
+      Protocol: HTTP  
+      Targets:   
+        - Id: !Ref T2EC2Instance1
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance2
+          Port: !Ref 21ALBTargetGroupPort
+      VpcId: !Ref T2VPC
+
+  T2EC2TargetGroup3:
+    Condition: InstanceTarget3
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: T2ALB
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort
+      Protocol: HTTP  
+      Targets:   
+        - Id: !Ref T2EC2Instance1
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance2
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance3
+          Port: !Ref 21ALBTargetGroupPort
+      VpcId: !Ref T2VPC
+
+  T2EC2TargetGroup4:
+    Condition: InstanceTarget4
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: T2ALB
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort
+      Protocol: HTTP  
+      Targets:   
+        - Id: !Ref T2EC2Instance1
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance2
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance3
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance4
+          Port: !Ref 21ALBTargetGroupPort      
+      VpcId: !Ref T2VPC
+
+  T2EC2TargetGroup5:
+    Condition: InstanceTarget5
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: T2ALB
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort
+      Protocol: HTTP  
+      Targets:   
+        - Id: !Ref T2EC2Instance1
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance2
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance3
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance4
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance5
+          Port: !Ref 21ALBTargetGroupPort
+      VpcId: !Ref T2VPC
+
+  T2EC2TargetGroup6:
+    Condition: InstanceTarget6
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: T2ALB
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort
+      Protocol: HTTP  
+      Targets:   
+        - Id: !Ref T2EC2Instance1
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance2
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance3
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance4
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance5
+          Port: !Ref 21ALBTargetGroupPort
+        - Id: !Ref T2EC2Instance6 
+          Port: !Ref 21ALBTargetGroupPort        
+      VpcId: !Ref T2VPC
+      
+  T2AutoScalingEC2TargetGroup:
+    Condition: AutoScalingDecision
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: T2ALB
+    Properties:
+      Name: !Sub ${23NamePrefix}EC2TargetGroup
+      Port: !Ref 21ALBTargetGroupPort
+      Protocol: HTTP
+      VpcId: !Ref T2VPC
+
+######################################################################### 
+  
+  T2EC2Instance1:
+    Condition: InstanceLaunch1
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ]     
+      InstanceType: !Ref 09InstanceType
+      KeyName: !Ref 24PemKeyName
+      Tags:
+      - Key: Name
+        Value: !Sub ${23NamePrefix}EC2(1)    
+      NetworkInterfaces: 
+      - GroupSet:
+        - !Ref T2EC2SG
+        SubnetId: !Ref T2PrivateSubnet1 # 인스턴스를 시작할 서브넷의 ID
+        DeviceIndex : "0" # 연결 순서에 따른 네트워크 인터페이스의 위치
+        Description: !Sub ${23NamePrefix}NGW(1)
+        AssociatePublicIpAddress: 'false' # 인스턴스에 퍼블릭IP주소 할당  
+        DeleteOnTermination: 'true' #인스턴스가 종료될때 인터페이스 삭제  
+      UserData: 
+        Fn::Base64: 
+          !Sub | 
+            #!/bin/bash 
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+              tar -xvf /tomcat.tar
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+              chmod 755 /Script.sh     
+
+  T2EC2Instance2: 
+    Condition: InstanceLaunch2
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ]     
+      InstanceType: !Ref 09InstanceType
+      KeyName: !Ref 24PemKeyName
+      Tags:
+      - Key: Name
+        Value: !Sub ${23NamePrefix}EC2(2)
+      NetworkInterfaces: 
+      - GroupSet:
+        - !Ref T2EC2SG       
+        SubnetId: !Ref T2PrivateSubnet2  
+        DeviceIndex : "0"
+        Description: !Sub ${23NamePrefix}NGW(2)
+        AssociatePublicIpAddress: 'false'       
+        DeleteOnTermination: 'true'           
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash 
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+              tar -xvf /tomcat.tar
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+              chmod 755 /Script.sh             
+
+  T2EC2Instance3:
+    Condition: InstanceLaunch3
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ]     
+      InstanceType: !Ref 09InstanceType
+      KeyName: !Ref 24PemKeyName
+      Tags:
+      - Key: Name
+        Value: !Sub ${23NamePrefix}EC2(3)
+      NetworkInterfaces: 
+      - GroupSet:
+        - !Ref T2EC2SG       
+        SubnetId: !Ref T2PrivateSubnet1  
+        DeviceIndex : "0"
+        Description: !Sub ${23NamePrefix}NGW(3)
+        AssociatePublicIpAddress: 'false'       
+        DeleteOnTermination: 'true'           
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash 
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+              tar -xvf /tomcat.tar
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+              chmod 755 /Script.sh       
+          
+
+  T2EC2Instance4:
+    Condition: InstanceLaunch4
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ]     
+      InstanceType: !Ref 09InstanceType
+      KeyName: !Ref 24PemKeyName
+      Tags:
+      - Key: Name
+        Value: !Sub ${23NamePrefix}EC2(4)
+      NetworkInterfaces: 
+      - GroupSet:
+        - !Ref T2EC2SG       
+        SubnetId: !Ref T2PrivateSubnet2  
+        DeviceIndex : "0"
+        Description: !Sub ${23NamePrefix}NGW(4)
+        AssociatePublicIpAddress: 'false'       
+        DeleteOnTermination: 'true'           
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash 
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+              tar -xvf /tomcat.tar
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+              chmod 755 /Script.sh       
+
+  T2EC2Instance5:
+    Condition: InstanceLaunch5
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ]     
+      InstanceType: !Ref 09InstanceType
+      KeyName: !Ref 24PemKeyName
+      Tags:
+      - Key: Name
+        Value: !Sub ${23NamePrefix}EC2(5)
+      NetworkInterfaces: 
+      - GroupSet:
+        - !Ref T2EC2SG       
+        SubnetId: !Ref T2PrivateSubnet1  
+        DeviceIndex : "0"
+        Description: !Sub ${23NamePrefix}NGW(5)
+        AssociatePublicIpAddress: 'false'       
+        DeleteOnTermination: 'true'           
+      UserData: 
+        Fn::Base64: 
+          !Sub | 
+            #!/bin/bash 
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+              tar -xvf /tomcat.tar
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+              chmod 755 /Script.sh       
+
+  T2EC2Instance6:
+    Condition: InstanceLaunch6
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ]     
+      InstanceType: !Ref 09InstanceType
+      KeyName: !Ref 24PemKeyName
+      Tags:
+      - Key: Name
+        Value: !Sub ${23NamePrefix}EC2(6)
+      NetworkInterfaces: 
+      - GroupSet:
+        - !Ref T2EC2SG       
+        SubnetId: !Ref T2PrivateSubnet2  
+        DeviceIndex : "0"
+        Description: !Sub ${23NamePrefix}NGW(6)
+        AssociatePublicIpAddress: 'false'       
+        DeleteOnTermination: 'true'           
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash 
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+              tar -xvf /tomcat.tar
+              wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+              chmod 755 /Script.sh        
+            
+
+#########################################################################
+# Route53 놓을 자리
+
+  T2HostedZone:
+    Condition: HostedZoneDecision  
+    Type: AWS::Route53::HostedZone
+    Properties: 
+      Name: !Join ['', [!Ref 28HostedZone, "."]] 
+
+  T2Record:
+    Condition: GeoLocationRecordNo
+    DependsOn: T2ALB
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      HostedZoneName: !Join ['', [!Ref 28HostedZone, "."]] 
+      Name: !Join ['',[!Ref 29FirstRecordname, ".", !Ref 28HostedZone, "."]]  
+      Type: CNAME
+      TTL: '900' 
+      ResourceRecords: [!GetAtt T2ALB.DNSName]  
+
+  T2RecordGeoLocation:
+    Condition: GeoLocationRecordYes
+    DependsOn: T2ALB
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      HostedZoneName: !Join ['', [!Ref 28HostedZone, "."]] 
+      Name: !Join ['',[!Ref 29FirstRecordname, ".", !Ref 28HostedZone, "."]]  
+      Type: CNAME
+      TTL: '900' 
+      SetIdentifier: !Ref 32GeoLocationSetIdentifier  # 라우팅 대상
+      ResourceRecords: [!GetAtt T2ALB.DNSName]   # 라우팅 대상
+      GeoLocation:
+        CountryCode: !Ref 34GeoLocationQuery # DNS 쿼리가 시작되는 위치를 선택합니다. 해당 위치에서 온 쿼리는 이 레코드에 지정된 리소스로 라우팅됩니다.
+        #SubdivisionCode: 
+
+  T2RecordGeoLocationALL:
+    Condition: GeoLocationCountryCodeALLYes
+    DependsOn: T2ALB
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      HostedZoneName: !Join ['', [!Ref 28HostedZone, "."]] 
+      Name: !Join ['',[!Ref 29FirstRecordname, ".", !Ref 28HostedZone, "."]]  
+      Type: CNAME
+      TTL: '900' 
+      SetIdentifier: !Ref 33GeoLocationSetIdentifier2  # 라우팅 대상
+      ResourceRecords: [!GetAtt T2ALB.DNSName]   # 라우팅 대상
+      GeoLocation:
+        CountryCode: '*' # DNS 쿼리가 시작되는 위치를 선택합니다. 해당 위치에서 온 쿼리는 이 레코드에 지정된 리소스로 라우팅됩니다.
+        #SubdivisionCode:
+#########################################################################
+
+  T2LaunchTemplate:  
+    Condition: AutoScalingDecision  
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateData: 
+        ImageId: !FindInMap [ AWSRegionMap, !Ref AWS::Region , HVM64 ] 
+        InstanceType: !Ref 09InstanceType
+        KeyName: !Ref 24PemKeyName
+        SecurityGroupIds: [!GetAtt [ T2EC2SG, GroupId]]
+        UserData: 
+          Fn::Base64: 
+            !Sub | 
+              #!/bin/bash 
+                wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/tomcat.tar
+                tar -xvf /tomcat.tar
+                wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Masterscript.sh
+                chmod 755 /Masterscript.sh       
+                wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/alldatabases_2021-01-13.sql
+                wget https://jjwtomcat.s3.ap-northeast-2.amazonaws.com/Script.sh
+                chmod 755 /Script.sh        
+      LaunchTemplateName: !Sub ${23NamePrefix}LaunchTemplate
+
+  
+  T2AutoScalingGroup1:
+    Condition: AutoScalingDecision
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      AutoScalingGroupName: !Sub ${23NamePrefix}AutoScalingGroup1
+      Cooldown: !Ref 42AutoScalingCooldown  # 조정 활동 완료 후 다른 조정 활동 시작 시간
+      HealthCheckGracePeriod: !Ref 43AutoScalingHealthCheckGracePeriod #시작 된 EC2 상태를 검사하기 전, 대기하는 시간
+      LaunchTemplate: #시작 템플릿 지정
+        LaunchTemplateId: !Ref T2LaunchTemplate
+        Version: !GetAtt T2LaunchTemplate.LatestVersionNumber 
+      MaxSize: !Ref 37AutoScalingMaxSize # AutoScaling 그룹 최대 크기
+      MinSize: !Ref 38AutoScalingMinSize # AutoScaling 그룹 최소 크기
+      DesiredCapacity: !Ref 39AutoScalingDesiredCapacity # 초기 인스턴스 개수
+      MetricsCollection: # 그룹 지표 모니터링 활성화
+        - Granularity: "1Minute" # 집계된 데이터를 Cloudwatch로 보내는 빈도 ,기본값 1minute 밖에 없음
+          #Metrics: 
+          #  - "GroupMinSize"
+          #  - "GroupMaxSize"
+          #  - "GroupDesiredCapacity"
+      NewInstancesProtectedFromScaleIn: !Ref 40AutoScalingProtectedFromScaleIn #축소 보호
+      TargetGroupARNs: [!Ref T2AutoScalingEC2TargetGroup] 
+      VPCZoneIdentifier: 
+        - Ref: T2PrivateSubnet1
+        - Ref: T2PrivateSubnet2
+        
+
+  T2ScalingPolicy1:
+    Condition: AutoScalingDecision
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AutoScalingGroupName: !Ref T2AutoScalingGroup1
+      PolicyType: 'TargetTrackingScaling' #대상 추적 정책
+      TargetTrackingConfiguration: 
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: ASGAverageNetworkIn #ASGAverageCPUUtilization  
+        TargetValue: !Ref 41AutoScalingAverageNetworkIn #33AutoScalingAverageCPUUtilization
+
+#########################################################################
+
+  #WjcloudTransitGateway:
+  #  Type: AWS::EC2::TransitGateway
+  #  Properties:
+  #    Tags:
+  #      - Key: Name
+  #        Value: !Sub ${23NamePrefix}TGW1  
+
+  #TransitGatewayAttachment1:
+  #  Type: AWS::EC2::TransitGatewayAttachment
+  #  DependsOn: T1VPC
+  #  Properties:
+  #    VpcId: !Ref T1VPC
+  #    SubnetIds:   
+  #    - !Ref T1PrivateSubnet1
+  #    - !Ref T1PrivateSubnet2
+  #    TransitGatewayId: !Ref WjcloudTransitGateway
+  #    Tags:
+  #      - Key: Name
+  #        Value: !Sub ${23NamePrefix}TGW1_Att  
+
+  #TransitGatewayRoute1:
+  #  Type: AWS::EC2::Route
+  #  DependsOn: TransitGatewayAttachment1
+  #  Properties:
+  #    RouteTableId: !Ref T1PrivateRouteTable1
+  #    DestinationCidrBlock: 50.0.0.0/8
+  #    TransitGatewayId: !Ref WjcloudTransitGateway
+
+  #TransitGatewayRoute2:
+  #  Type: AWS::EC2::Route
+  #  DependsOn: TransitGatewayAttachment1
+  #  Properties:
+  #    RouteTableId: !Ref T1PrivateRouteTable2
+  #    DestinationCidrBlock: 50.0.0.0/8
+  #    TransitGatewayId: !Ref WjcloudTransitGateway
+  
+#########################################################################
+
+  T2VPCPeeringConnection1: 
+    Condition: VPCPeeringYESAnotherAccount #생성 조건 지정
+    Type: AWS::EC2::VPCPeeringConnection 
+    Properties: 
+      PeerVpcId: !Ref 47PeeringVPCID #다른 스택에서 출력 참조 
+      VpcId: !Ref T2VPC
+      PeerRegion: !Ref 50VPCmasterRegion #수락자 VPC에 대한 리전(수락자 VPC가 요청을 생성하는 리전이 아닌 다른 리전에 위치한 경우)입니다.
+      PeerRoleArn: !Ref 49PeeringRoleArn #다른 AWS 계정에서 피어링 연결을 위한 VPC 피어 역할의 Amazon 리소스 이름(ARN)입니다.
+      PeerOwnerId: !Ref 48PeeringAccountID
+
+  T2VPCPeeringConnection2: 
+    Condition: VPCPeeringNoAnotherAccount #생성 조건 지정
+    Type: AWS::EC2::VPCPeeringConnection 
+    Properties: 
+      PeerVpcId: !Ref 47PeeringVPCID #다른 스택에서 출력 참조 
+      VpcId: !Ref T2VPC
+      PeerRegion: !Ref 50VPCmasterRegion #수락자 VPC에 대한 리전(수락자 VPC가 요청을 생성하는 리전이 아닌 다른 리전에 위치한 경우)입니다.
+      
+  #T2PeeringRoute1: #T1의 라우팅 테이블
+  #  Condition: VPCPeeringDecision
+  #  Type: 'AWS::EC2::Route'
+  #  Properties:
+  #    DestinationCidrBlock: !Ref 01VpcCIDR #라우팅 대상 지정
+  #    RouteTableId: !Ref 52VPCPeeringRouteTable1 #T1의 라우팅테이블ID
+  #    VpcPeeringConnectionId: !Ref T2VPCPeeringConnection1 #피어링 리소스
+
+  #T2PeeringRoute2:
+  #  Condition: VPCPeeringDecision
+  #  Type: 'AWS::EC2::Route'
+  #  Properties:
+  #    DestinationCidrBlock: !Ref 01VpcCIDR
+  #    RouteTableId: !Ref 53VPCPeeringRouteTable2
+  #    VpcPeeringConnectionId: !Ref T2VPCPeeringConnection1
+
+  T2PeeringRoute3: #T2의 라우팅 테이블
+    Condition: VPCPeeringYESAnotherAccount
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: !Ref 51VPCPeeringCIDR
+      RouteTableId: !Ref T2PrivateRouteTable1  
+      VpcPeeringConnectionId: !Ref T2VPCPeeringConnection1
+
+  T2PeeringRoute4:
+    Condition: VPCPeeringYESAnotherAccount
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: !Ref 51VPCPeeringCIDR
+      RouteTableId: !Ref T2PrivateRouteTable2  
+      VpcPeeringConnectionId: !Ref T2VPCPeeringConnection1
+
+  T2PeeringRoute5: #T2의 라우팅 테이블
+    Condition: VPCPeeringNoAnotherAccount
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: !Ref 51VPCPeeringCIDR
+      RouteTableId: !Ref T2PrivateRouteTable1  
+      VpcPeeringConnectionId: !Ref T2VPCPeeringConnection2
+
+  T2PeeringRoute6:
+    Condition: VPCPeeringNoAnotherAccount
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: !Ref 51VPCPeeringCIDR
+      RouteTableId: !Ref T2PrivateRouteTable2  
+      VpcPeeringConnectionId: !Ref T2VPCPeeringConnection2      
+
+#########################################################################
+Outputs:
+  01T2VPC:   
+    Description: Information about VPC
+    Value: !Ref T2VPC # VPC의 ID 값
+    Export:              
+      Name: ProdT2VPC      
+
+  02T2PublicSubnet1:
+    Description: Information about PublicSubnet1
+    Value: !Ref T2PublicSubnet1
+    Export:             
+      Name: ProdT2PublicSubnet1
+
+  03T2PublicSubnet2:
+    Description: Information about PublicSubnet2
+    Value: !Ref T2PublicSubnet2
+    Export:             
+      Name: ProdT2PublicSubnet2
+
+  04T2PrivateSubnet1:
+    Description: Information about PrivateSubnet1
+    Value: !Ref T2PrivateSubnet1
+    Export:             
+      Name: ProdT2PrivateSubnet1
+
+  05T2PrivateSubnet2:
+    Description: Information about PrivateSubnet2
+    Value: !Ref T2PrivateSubnet2
+    Export:             
+      Name: ProdT2PrivateSubnet2   
+
+  06T2PrivateSubnetDB1:
+    Description: Information about PrivateSubnetDB1
+    Value: !Ref T2PrivateSubnetDB1
+    Export:             
+      Name: ProdT2PrivateSubnetDB1    
+
+  07T2PrivateSubnetDB2:
+    Description: Information about PrivateSubnetDB2
+    Value: !Ref T2PrivateSubnetDB2
+    Export:             
+      Name: ProdT2PrivateSubnetDB2    
+
+  08T2EC2SG:
+    Description: Information about T2EC2SG
+    Value: !Ref T2EC2SG
+    Export:             
+      Name: ProdT2EC2SG  
+  
+  09VpcCIDR:
+    Description: Information about VpcCIDR
+    Value: !Ref 01VpcCIDR
+    Export:             
+      Name: ProdT2VpcCIDR
+  
+  10T2PrivateRouteTable1: 
+    Description: Information about PrivateRouteTable1
+    Value: !Ref T2PrivateRouteTable1
+    Export:             
+      Name: ProdT2PrivateRouteTable1  
+
+  11T2PrivateRouteTable2: 
+    Description: Information about PrivateRouteTable2
+    Value: !Ref T2PrivateRouteTable2
+    Export:             
+      Name: ProdT2PrivateRouteTable2 
+
+  
+  #13TransitGateway:
+  #  Description: Information about TransitGateway
+  #  Value: !Ref WjcloudTransitGateway
+  #  Export:             
+  #    Name: ProdWjcloudTransitGateway
+#########################################################################
