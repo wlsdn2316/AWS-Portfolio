@@ -1,4 +1,4 @@
-# AWS-Portfolio
+# AWS-Cloudformation
 
 
 example.co.kr 도메인 웹 서비스를 AWS에서 프로비저닝, 해외로 서비스를 확장 시에 신속한 인프라 구성을 위해 AWS 서비스인 Cloudformation을 활용하여 인프라 프로비저닝 자동화
